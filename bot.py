@@ -100,7 +100,6 @@ def pegar_novidades():
     soup = BeautifulSoup(r.text, "html.parser")
     novidades = []
 
-    # 🔥 Pega apenas cards reais de novidades
     cards = soup.select("div.synopsis")
 
     for card in cards:
@@ -114,27 +113,27 @@ def pegar_novidades():
 
         link = "https://www.jw.org" + href
 
-        # 🔹 Filtrar links genéricos (índices, categorias vazias)
-        ignorar = [
-            "/videos/", "/musicas-canticos/", "/orientacoes/",
-            "/indices/", "/leituras-biblicas-dramatizadas/",
-            "/pecas-teatrais-biblicas/"
+        # 🔹 Remover apenas os links genéricos listados
+        genericos = [
+            "/pt/noticias/",
+            "/pt/biblioteca/leituras-biblicas-dramatizadas/",
+            "/pt/biblioteca/pecas-teatrais-biblicas/",
+            "/pt/biblioteca/musicas-canticos/",
+            "/pt/biblioteca/videos/",
+            "/pt/biblioteca/videos/#pt/categories/VODStudio",
+            "/pt/biblioteca/orientacoes/",
+            "/pt/biblioteca/indices/"
         ]
-        if any(h in link for h in ignorar):
+        if any(h in link for h in genericos):
             continue
 
         titulo = card.get_text(strip=True)
         if len(titulo) < 10:
             continue
 
-        # 🖼️ Imagem
         img_tag = link_tag.find("img")
-        if img_tag and img_tag.get("src"):
-            imagem = "https://www.jw.org" + img_tag.get("src")
-        else:
-            imagem = None
+        imagem = "https://www.jw.org" + img_tag.get("src") if img_tag and img_tag.get("src") else None
 
-        # 📅 Data
         data_tag = card.find_next("div", class_="publicationDate")
         data = data_tag.get_text(strip=True) if data_tag else ""
 
@@ -176,7 +175,7 @@ if not os.path.exists(ARQUIVO):
 while True:
     try:
         verificar()
-        time.sleep(300)  # 5 minutos
+        time.sleep(300)
     except Exception as e:
         print("Erro no loop:", e)
         time.sleep(60)
