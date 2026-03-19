@@ -51,6 +51,21 @@ def identificar_tipo(titulo):
     else:
         return "🔔"
 
+def buscar_artigos(soup):
+    # tentativa principal (mais estável)
+    artigos = soup.select("a[data-qa-id='teaser-link']") or []
+
+    # fallback caso o site mude
+    if not artigos:
+        print("⚠️ Fallback ativado - estrutura mudou")
+        artigos = soup.find_all("a", href=True)
+        artigos = [
+            a for a in artigos
+            if "/pt/" in a.get("href", "")
+        ]
+
+    return artigos
+
 def verificar():
     global enviados, primeira_execucao
     
@@ -58,9 +73,13 @@ def verificar():
         r = requests.get(URL, timeout=10)
         soup = BeautifulSoup(r.text, "html.parser")
         
-        artigos = soup.find_all("a", class_="teaserBlockLink") or []
-        
-        # 👇 LIMITA NA PRIMEIRA EXECUÇÃO
+        artigos = buscar_artigos(soup)
+
+        if not artigos:
+            print("❌ Nenhum artigo encontrado")
+            return
+
+        # limitar primeira execução
         if primeira_execucao:
             artigos = artigos[:10]
 
@@ -68,33 +87,38 @@ def verificar():
         
         for artigo in artigos:
             titulo = artigo.get_text(strip=True)
-            link = "https://www.jw.org" + artigo.get("href")
+            href = artigo.get("href")
+
+            if not href:
+                continue
+
+            link = "https://www.jw.org" + href
             
             if link not in enviados:
                 enviados.add(link)
                 novos.append((titulo, link))
         
-        if primeira_execucao:
-            enviar_mensagem("📥 <b>Carregando últimos conteúdos do site...</b>")
-        
-        # envia do mais antigo pro mais novo
+        # enviar links
         for titulo, link in reversed(novos):
             emoji = identificar_tipo(titulo)
             mensagem = f"{emoji} <b>{titulo}</b>\n{link}"
             
             enviar_mensagem(mensagem)
             time.sleep(2)
-        
-        if novos:
-            salvar()
+
+        # salva sempre
+        salvar()
+
+        # desativa primeira execução
+        if primeira_execucao:
             primeira_execucao = False
 
     except Exception as e:
         print("Erro ao verificar site:", e)
 
-# mensagem inicial
-enviar_mensagem("🤖 Bot iniciado e monitorando o jw.org...")
+# inicia sem spam
+print("🤖 Bot iniciado...")
 
 while True:
     verificar()
-    time.sleep(300)
+    time.sleep(300)  # 5 minutos
