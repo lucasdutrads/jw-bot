@@ -5,7 +5,7 @@ import json
 import os
 
 TOKEN = "8650008100:AAElTKfTT4ghB2Q32nEqlW9_iPVAQ1kdmtY"
-CHAT_ID = "977648602"
+CHAT_ID = "-1003496227818"
 
 URL = "https://www.jw.org/pt/novidades/"
 ARQUIVO = "enviados.json"
