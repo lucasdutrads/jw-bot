@@ -4,8 +4,8 @@ import time
 import json
 import os
 
-TOKEN = "8650008100:AAElTKfTT4ghB2Q32nEqlW9_iPVAQ1kdmtY"
-CHAT_ID = "-1003496227818"
+TOKEN = os.getenv("TOKEN")
+CHAT_ID = os.getenv("CHAT_ID")
 
 URL = "https://www.jw.org/pt/novidades/"
 ARQUIVO = "enviados.json"
