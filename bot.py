@@ -58,35 +58,36 @@ def enviar_sem_imagem(titulo, link, categoria, data):
     )
 
 def enviar_lista_novos(novos):
-    """
-    Envia todos os novos posts em sequência, respeitando imagem e texto.
-    """
-    for titulo, link, imagem, data in reversed(novos):
-        categoria = identificar_tipo(titulo)
+    for titulo, link, imagem, categoria, data in reversed(novos):
         if imagem:
             enviar_post(titulo, link, imagem, categoria, data)
         else:
             enviar_sem_imagem(titulo, link, categoria, data)
-        time.sleep(2)  # pequeno intervalo entre envios
+        time.sleep(2)
 
 # =========================
-# IDENTIFICAR TIPO
+# IDENTIFICAR CATEGORIA PELO LINK
 # =========================
-def identificar_tipo(titulo):
-    t = titulo.lower()
-    if "broadcasting" in t or "boletim" in t:
-        return "🎥 Vídeo"
-    elif "sentinela" in t:
-        return "📖 A Sentinela"
-    elif "despertai" in t:
-        return "📚 Despertai"
-    elif "notícia" in t:
+def identificar_tipo_pelo_link(link):
+    if "/noticias/" in link:
         return "📰 Notícia"
+    elif "/revistas/sentinela" in link:
+        return "📖 A Sentinela"
+    elif "/revistas/despertai" in link:
+        return "📚 Despertai"
+    elif "/videos/" in link:
+        return "🎥 Vídeo"
+    elif "/jw-apostila-do-mes/" in link:
+        return "📘 Apostila"
+    elif "/brochuras/" in link:
+        return "📗 Brochura"
+    elif "/musicas-canticos/" in link:
+        return "🎵 Música"
     else:
         return "🔔 Atualização"
 
 # =========================
-# PEGAR NOVIDADES
+# PEGAR NOVIDADES REAIS
 # =========================
 def pegar_novidades():
     try:
@@ -99,31 +100,46 @@ def pegar_novidades():
     soup = BeautifulSoup(r.text, "html.parser")
     novidades = []
 
+    # 🔥 Pega apenas cards reais de novidades
     cards = soup.select("div.synopsis")
 
     for card in cards:
         link_tag = card.find_parent("a")
         if not link_tag:
             continue
+
         href = link_tag.get("href")
         if not href or not href.startswith("/pt/"):
             continue
+
         link = "https://www.jw.org" + href
+
+        # 🔹 Filtrar links genéricos (índices, categorias vazias)
+        ignorar = [
+            "/videos/", "/musicas-canticos/", "/orientacoes/",
+            "/indices/", "/leituras-biblicas-dramatizadas/",
+            "/pecas-teatrais-biblicas/"
+        ]
+        if any(h in link for h in ignorar):
+            continue
 
         titulo = card.get_text(strip=True)
         if len(titulo) < 10:
             continue
 
+        # 🖼️ Imagem
         img_tag = link_tag.find("img")
         if img_tag and img_tag.get("src"):
             imagem = "https://www.jw.org" + img_tag.get("src")
         else:
             imagem = None
 
+        # 📅 Data
         data_tag = card.find_next("div", class_="publicationDate")
         data = data_tag.get_text(strip=True) if data_tag else ""
 
-        novidades.append((titulo, link, imagem, data))
+        categoria = identificar_tipo_pelo_link(link)
+        novidades.append((titulo, link, imagem, categoria, data))
 
     return novidades
 
@@ -135,10 +151,10 @@ def verificar():
     novidades = pegar_novidades()
     novos = []
 
-    for titulo, link, imagem, data in novidades:
+    for titulo, link, imagem, categoria, data in novidades:
         if link not in enviados:
             enviados.add(link)
-            novos.append((titulo, link, imagem, data))
+            novos.append((titulo, link, imagem, categoria, data))
 
     if novos:
         enviar_lista_novos(novos)
@@ -149,7 +165,7 @@ def verificar():
 # =========================
 if not os.path.exists(ARQUIVO):
     novidades = pegar_novidades()
-    for _, link, _, _ in novidades:
+    for _, link, _, _, _ in novidades:
         enviados.add(link)
     salvar()
     print("Inicializado sem enviar posts antigos")
