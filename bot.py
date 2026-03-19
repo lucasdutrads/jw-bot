@@ -42,7 +42,7 @@ def identificar_tipo(titulo):
     
     if "broadcasting" in t or "boletim" in t or "corpo governante" in t:
         return "🎥"
-    elif "watchtower" in t or "sentinela" in t:
+    elif "sentinela" in t or "watchtower" in t:
         return "📖"
     elif "despertai" in t:
         return "📚"
@@ -52,17 +52,29 @@ def identificar_tipo(titulo):
         return "🔔"
 
 def buscar_artigos(soup):
-    # tentativa principal (mais estável)
+    # tentativa principal (mais precisa)
     artigos = soup.select("a[data-qa-id='teaser-link']") or []
 
     # fallback caso o site mude
     if not artigos:
         print("⚠️ Fallback ativado - estrutura mudou")
-        artigos = soup.find_all("a", href=True)
-        artigos = [
-            a for a in artigos
-            if "/pt/" in a.get("href", "")
-        ]
+
+        todos_links = soup.find_all("a", href=True)
+
+        artigos = []
+        for a in todos_links:
+            href = a.get("href", "")
+
+            if not href.startswith("/pt/"):
+                continue
+
+            # FILTRO CORRETO (somente conteúdos reais)
+            if any(p in href for p in [
+                "/pt/noticias/",
+                "/pt/biblioteca/",
+                "/pt/multimidia/"
+            ]):
+                artigos.append(a)
 
     return artigos
 
@@ -79,7 +91,7 @@ def verificar():
             print("❌ Nenhum artigo encontrado")
             return
 
-        # limitar primeira execução
+        # primeira execução → limita pra não floodar
         if primeira_execucao:
             artigos = artigos[:10]
 
@@ -89,7 +101,7 @@ def verificar():
             titulo = artigo.get_text(strip=True)
             href = artigo.get("href")
 
-            if not href:
+            if not href or not titulo:
                 continue
 
             link = "https://www.jw.org" + href
@@ -98,7 +110,7 @@ def verificar():
                 enviados.add(link)
                 novos.append((titulo, link))
         
-        # enviar links
+        # envia do mais antigo pro mais novo
         for titulo, link in reversed(novos):
             emoji = identificar_tipo(titulo)
             mensagem = f"{emoji} <b>{titulo}</b>\n{link}"
@@ -106,17 +118,14 @@ def verificar():
             enviar_mensagem(mensagem)
             time.sleep(2)
 
-        # salva sempre
         salvar()
 
-        # desativa primeira execução
         if primeira_execucao:
             primeira_execucao = False
 
     except Exception as e:
         print("Erro ao verificar site:", e)
 
-# inicia sem spam
 print("🤖 Bot iniciado...")
 
 while True:
